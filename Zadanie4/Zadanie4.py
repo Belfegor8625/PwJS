@@ -2,8 +2,14 @@
 # encoding: utf-8
 
 import npyscreen
+import urllib.request
 
+"""         TODO 
+obsluga funkcjonalnosci z test.py
+zmiana klasy na student i poszerzenie jej
+obsuga nowych separatorow danych
 
+"""
 class WorkerData(object):
     def __init__(self, name, surname):
         self.name = name
