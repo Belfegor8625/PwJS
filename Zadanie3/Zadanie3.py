@@ -5,13 +5,9 @@ import npyscreen
 
 
 class WorkerData(object):
-    def __init__(self, id, name, surname):
-        self.id = id
+    def __init__(self, name, surname):
         self.name = name
         self.surname = surname
-
-    def getId(self):
-        return self.id
 
     def getName(self):
         return self.name
@@ -78,7 +74,7 @@ class FormFirst(npyscreen.FormBaseNew):
                     self.dataList.append(line)
                     line = line.strip()
                     line = line.split(" ")
-                    allDataList.append(WorkerData(line[0], line[1], line[2]))
+                    allDataList.append(WorkerData(line[0], line[1]))
 
             finally:
                 file.close()
@@ -127,6 +123,7 @@ class FormAddData(npyscreen.FormBaseNew):
 
     def saveData(self):
         line = self.nameAndSurname.value.strip()
+
         line = line.split(" ")
         if allDataList:
             allDataList.append(WorkerData(len(allDataList) + 1, line[0], line[1]))
@@ -156,16 +153,9 @@ class FormBaseOptions(npyscreen.FormBaseNew):
 
     class ButtonShowBase(npyscreen.ButtonPress):
         def whenPressed(self):
-            npyscreen.notify_confirm("id\tImie\tNazwisko\n" +
-                                     self.buildMessageString(allDataList),
+            npyscreen.notify_confirm("L.p.\tImie\tNazwisko\n" +
+                                     self.parent.buildMessageString(allDataList),
                                      title="Baza danych", wide=True)
-
-        def buildMessageString(self, list):
-            string = ""
-            for item in list:
-                string += str(item.id) + ")\t" + item.name + "\t" + item.surname + "\n"
-
-            return string
 
     class ButtonMoveToAddData(npyscreen.ButtonPress):
         def whenPressed(self):
@@ -174,48 +164,49 @@ class FormBaseOptions(npyscreen.FormBaseNew):
     class ButtonGoToSaveBase(npyscreen.ButtonPress):
         def whenPressed(self):
             self.parent.parentApp.switchForm("SAVEBASE")
-            self.parent.editing = False
 
     class ButtonSort(npyscreen.ButtonPress):
         def whenPressed(self):
             if self.parent.option.value[0] == 0:
-                npyscreen.notify_confirm(
-                    self.buildMessageString("id\tImie\tNazwisko\n" +
-                        sorted(allDataList, key=WorkerData.getName)),
-                    title="Po imieniu", wide=True)
+                npyscreen.notify_confirm("L.p.\tImie\tNazwisko\n" +
+                                         self.parent.buildMessageString(sorted(allDataList, key=WorkerData.getName)),
+                                         title="Po imieniu", wide=True)
             elif self.parent.option.value[0] == 1:
-                npyscreen.notify_confirm(
-                    self.buildMessageString("id\tImie\tNazwisko\n" +
-                        sorted(allDataList, key=WorkerData.getSurname)),
-                    title="Po nazwisku", wide=True)
+                npyscreen.notify_confirm("L.p.\tImie\tNazwisko\n" +
+                                         self.parent.buildMessageString(sorted(allDataList, key=WorkerData.getSurname)),
+                                         title="Po nazwisku", wide=True)
 
-        def buildMessageString(self, list):
-            string = ""
-            for item in list:
-                string += str(item.id) + ")\t" + item.name + "\t" + item.surname + "\n"
-
-            return string
+    def buildMessageString(self, list):
+        string = ""
+        counter = 1
+        for item in list:
+            string += str(counter) + "\t" + item.name + "\t" + item.surname + "\n"
+            counter = counter + 1
+        return string
 
     class ButtonGoToEraseData(npyscreen.ButtonPress):
         def whenPressed(self):
+            self.parent.parentApp.getForm("ERASEDATA").dataToErase.values = ['{} {}'.format(item.name,item.surname)
+                                                                             for item in allDataList]
             self.parent.parentApp.switchForm("ERASEDATA")
 
 
-class FormEraseData(npyscreen.FormBaseNew):
+class FormEraseData(npyscreen.ActionPopup):
     def create(self):
-        self.eraseIndex = self.add(npyscreen.TitleText, name="Podaj nr ID do usuniecia")
-        self.buttonEraseData = self.add(self.ButtonEraseData, name="Usun")
-        self.buttonPrevious = self.add(ButtonPrevious, name="Anuluj")
+        self.dataToErase = self.add(npyscreen.TitleMultiSelect, max_height=7, name="Wybierz dane do usuniecia:",
+                                    scroll_exit=True)
 
-    class ButtonEraseData(npyscreen.ButtonPress):
-        def whenPressed(self):
-            idToErase = int(self.parent.eraseIndex.value)
-            if idToErase:
-                del allDataList[idToErase - 1]
-                self.parent.parentApp.switchForm("BASEOPTIONS")
-                self.parent.eraseIndex.value = ""
-            else:
-                npyscreen.notify_confirm("Brak nazwy", "Error")
+    def on_ok(self):
+        selectedIndexes = self.dataToErase.value
+        if selectedIndexes > 0:
+            for index in selectedIndexes:
+                allDataList.pop(index)
+        else:
+            npyscreen.notify_confirm("Nie wybrano danych do usuniecia", title="Blad")
+        self.parentApp.switchFormPrevious()
+
+    def on_cancel(self):
+        self.parentApp.switchFormPrevious()
 
 
 class App(npyscreen.NPSAppManaged):
@@ -224,7 +215,7 @@ class App(npyscreen.NPSAppManaged):
         self.addForm("BASEOPTIONS", FormBaseOptions, name="Opcje bazy", lines=15, columns=40)
         self.addForm("NUMBEROFNEWDATA", FormNumberOfNewData, name="Ilosc danych", lines=10, columns=40)
         self.addForm("ADDDATA", FormAddData, name="Imie i nazwisko", lines=10, columns=50)
-        self.addForm("ERASEDATA", FormEraseData, name="Usuwanie danych", lines=10, columns=40)
+        self.addForm("ERASEDATA", FormEraseData, name="Usuwanie danych", lines=20, columns=40)
         self.addForm("SAVEBASE", FormSaveBase, name="Zapis bazy", lines=10, columns=40)
 
 
